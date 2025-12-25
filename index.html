@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chennai Rail Connect | Master Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        :root { --rail-navy: #0f172a; --rail-blue: #1d4ed8; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #1e293b; user-select: none; }
+        .header-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%); }
+        .glass-panel { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.5); }
+        .search-results { max-height: 400px; overflow-y: auto; z-index: 1000; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2); }
+        .tab-btn.active { color: #2563eb; border-bottom: 3px solid #2563eb; }
+        .line-badge { font-size: 0.6rem; padding: 2px 8px; border-radius: 6px; font-weight: 800; text-transform: uppercase; }
+        .bg-south { background: #dcfce7; color: #166534; }
+        .bg-west { background: #fee2e2; color: #991b1b; }
+        .bg-north { background: #fef9c3; color: #854d0e; }
+        .bg-mrts { background: #ffedd5; color: #9a3412; }
+        .bg-m-blue { background: #e0f2fe; color: #0369a1; }
+        .bg-m-green { background: #ecfdf5; color: #047857; }
+        .timeline-line { position: absolute; left: 19px; top: 36px; bottom: -20px; width: 2px; background: #e2e8f0; }
+        .timeline-item:last-child .timeline-line { display: none; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-up { animation: fadeInUp 0.4s ease-out forwards; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="min-h-screen pb-16">
+
+    <header class="header-gradient text-white pt-10 pb-24 px-6 rounded-b-[3.5rem] shadow-xl">
+        <div class="max-w-xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black tracking-tight flex items-center gap-3">
+                    <i class="fa-solid fa-train-subway text-blue-400"></i> Chennai Rail
+                </h1>
+                <p class="text-blue-200 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 opacity-80">Full Integrated Network</p>
+            </div>
+            <div id="clock" class="text-xs font-mono bg-black/20 px-3 py-1.5 rounded-xl border border-white/10">00:00:00</div>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto px-4 -mt-16 relative z-30">
+        <section class="glass-panel rounded-[2.5rem] p-6 space-y-4 shadow-2xl">
+            <div class="relative group">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-4 mb-1 block">Origin (Kelambum Idam)</label>
+                <div class="relative">
+                    <i class="fa-solid fa-circle-dot absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 text-[10px]"></i>
+                    <input type="text" id="src-input" autocomplete="off" placeholder="Start Station..." 
+                           class="w-full pl-10 pr-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 placeholder-slate-400 transition-all outline-none"
+                           oninput="handleSearch('src')" onfocus="handleSearch('src')">
+                </div>
+                <div id="src-results" class="search-results absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl hidden shadow-2xl border border-slate-100"></div>
+            </div>
+
+            <div class="flex justify-center -my-3 relative z-40">
+                <button onclick="swapStations()" class="bg-blue-600 text-white w-10 h-10 rounded-full shadow-lg hover:rotate-180 transition-all duration-500 flex items-center justify-center">
+                    <i class="fa-solid fa-arrows-up-down text-xs"></i>
+                </button>
+            </div>
+
+            <div class="relative group">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-4 mb-1 block">Destination (Seroom Idam)</label>
+                <div class="relative">
+                    <i class="fa-solid fa-location-dot absolute left-4 top-1/2 -translate-y-1/2 text-rose-500 text-[10px]"></i>
+                    <input type="text" id="dest-input" autocomplete="off" placeholder="Where to?" 
+                           class="w-full pl-10 pr-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 placeholder-slate-400 transition-all outline-none"
+                           oninput="handleSearch('dest')" onfocus="handleSearch('dest')">
+                </div>
+                <div id="dest-results" class="search-results absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl hidden shadow-2xl border border-slate-100"></div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-50">
+                <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                    <button onclick="setFilter('all', this)" class="filter-btn shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold bg-blue-600 text-white shadow-md">Full Day</button>
+                    <button onclick="setFilter('04-08', this)" class="filter-btn shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-500">04:00 - 08:00</button>
+                    <button onclick="setFilter('08-12', this)" class="filter-btn shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-500">08:00 - 12:00</button>
+                    <button onclick="setFilter('12-16', this)" class="filter-btn shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-500">12:00 - 16:00</button>
+                    <button onclick="setFilter('16-20', this)" class="filter-btn shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-500">16:00 - 20:00</button>
+                    <button onclick="setFilter('20-00', this)" class="filter-btn shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-500">20:00 - 00:00</button>
+                </div>
+            </div>
+        </section>
+
+        <div id="result-view" class="hidden mt-8 animate-up">
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-blue-600 text-white p-5 rounded-[2rem] shadow-xl">
+                    <p class="text-[9px] font-bold uppercase opacity-80">Estimated Fare</p>
+                    <h2 id="fare-val" class="text-3xl font-black mt-1">₹0</h2>
+                    <p id="fare-type" class="text-[8px] mt-2 opacity-70 font-bold uppercase tracking-widest">Standard</p>
+                </div>
+                <div class="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Trip Distance</p>
+                    <h2 id="dist-val" class="text-3xl font-black text-slate-800 mt-1">0 km</h2>
+                    <p id="route-badge" class="text-[8px] mt-2 font-black text-blue-500 uppercase tracking-widest">Calculated</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 mb-6">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">Journey Roadmap</h3>
+                <div id="timeline-container" class="space-y-0"></div>
+            </div>
+
+            <div class="flex gap-10 px-6 mb-6 border-b border-slate-200">
+                <button onclick="switchTab('timings')" id="btn-timings" class="pb-3 text-xs font-black tab-btn active uppercase tracking-widest">Timings</button>
+                <button onclick="switchTab('guide')" id="btn-guide" class="pb-3 text-xs font-black tab-btn text-slate-400 uppercase tracking-widest">Station Info</button>
+            </div>
+
+            <div id="timings-list" class="space-y-3"></div>
+            <div id="guide-list" class="hidden space-y-6"></div>
+        </div>
+
+        <div id="empty-state" class="mt-20 text-center space-y-6">
+            <div class="w-32 h-32 bg-white rounded-[40px] flex items-center justify-center mx-auto shadow-sm border border-slate-100 rotate-3">
+                <i class="fa-solid fa-map-location-dot text-slate-200 text-5xl"></i>
+            </div>
+            <div class="space-y-2">
+                <h3 class="text-xl font-bold text-slate-800">Plan Your Route</h3>
+                <p class="text-slate-400 text-sm max-w-[280px] mx-auto">Connecting 150+ stations across the city.</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ==========================================
+        //  THE COMPREHENSIVE STATION MASTER LIST
+        // ==========================================
+        const masterDB = [
+            // --- SOUTH LINE (Relative to Beach=0) ---
+            {n:"Chennai Beach",l:"South",k:0,m:"Burma Bazar",f:"Street Food",s:"Marina Beach",x:"MRTS/North Hub"},
+            {n:"Chennai Fort",l:"South",k:2,m:"None",f:"Local",s:"Fort St George",x:"MRTS"},
+            {n:"Chennai Park",l:"South",k:3,m:"Moore Market",f:"Central Food",s:"Ripon Bldg",x:"Hub"},
+            {n:"Chennai Egmore",l:"South",k:4,m:"Alsa Mall",f:"Mathura",s:"Museum",x:"Metro Green"},
+            {n:"Chetpet",l:"South",k:6,m:"None",f:"Seafood",s:"Eco Park",x:"None"},
+            {n:"Nungambakkam",l:"South",k:8,m:"Ispahani",f:"Cafes",s:"Valluvar Kottam",x:"None"},
+            {n:"Kodambakkam",l:"South",k:9,m:"None",f:"Local",s:"Studios",x:"None"},
+            {n:"Mambalam",l:"South",k:11,m:"T-Nagar Shops",f:"Murugan Idli",s:"Ranganathan St",x:"None"},
+            {n:"Saidapet",l:"South",k:13,m:"Market",f:"Local",s:"Panagal Park",x:"Metro Blue"},
+            {n:"Guindy",l:"South",k:14,m:"Phoenix Nearby",f:"ITC Grand Chola",s:"Guindy Park",x:"Metro Blue Hub"},
+            {n:"St. Thomas Mount",l:"South",k:17,m:"None",f:"Bakery",s:"Mount Church",x:"Metro Green Hub"},
+            {n:"Pazhavanthangal",l:"South",k:18,m:"None",f:"Local",s:"Nanganallur Tmpl",x:"None"},
+            {n:"Meenambakkam",l:"South",k:20,m:"Aerohub",f:"Airport",s:"View",x:"Metro Blue"},
+            {n:"Trisulam",l:"South",k:21,m:"Airport",f:"Food Court",s:"Terminal",x:"Metro Blue"},
+            {n:"Pallavaram",l:"South",k:23,m:"Friday Mkt",f:"A2B",s:"Hill",x:"None"},
+            {n:"Chromepet",l:"South",k:25,m:"Saravana",f:"Grand Sweets",s:"MIT",x:"None"},
+            {n:"Tambaram Sanatorium",l:"South",k:27,m:"Local",f:"Sangeetha",s:"MEPZ",x:"None"},
+            {n:"Tambaram",l:"South",k:29,m:"Market",f:"Vasantha Bhavan",s:"MCC",x:"Major Hub"},
+            {n:"Perungalathur",l:"South",k:32,m:"None",f:"Highway",s:"Outer Ring",x:"None"},
+            {n:"Vandalur",l:"South",k:35,m:"None",f:"Zoo Food",s:"Zoo Park",x:"None"},
+            {n:"Urapakkam",l:"South",k:37,m:"None",f:"Local",s:"Residential",x:"None"},
+            {n:"Guduvancheri",l:"South",k:40,m:"None",f:"Local",s:"Lake",x:"None"},
+            {n:"Potheri",l:"South",k:43,m:"Estancia",f:"SRM Food",s:"SRM Univ",x:"None"},
+            {n:"Kattangulathur",l:"South",k:45,m:"None",f:"Estancia",s:"Zoho",x:"None"},
+            {n:"Maraimalai Nagar",l:"South",k:47,m:"None",f:"Local",s:"Ford India",x:"None"},
+            {n:"Singaperumal Koil",l:"South",k:51,m:"None",f:"Prasadam",s:"Narasimhar Tmpl",x:"None"},
+            {n:"Paranur",l:"South",k:55,m:"None",f:"MWC Food",s:"Mahindra City",x:"None"},
+            {n:"Chengalpattu",l:"South",k:60,m:"None",f:"Highway Inn",s:"Lake",x:"Terminus"},
+
+            // --- NORTH LINE (Relative to Central=0) ---
+            {n:"Chennai Central (MMC)",l:"North",k:0,m:"Moore Mkt",f:"Hotel Central",s:"Hub",x:"West/North Hub"},
+            {n:"Royapuram",l:"North",k:2,m:"None",f:"Local",s:"Heritage Stn",x:"None"},
+            {n:"Washermanpet",l:"North",k:3.5,m:"Mint St",f:"Novelty Tea",s:"Old City",x:"Metro Blue"},
+            {n:"Korukkupet",l:"North",k:5,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Tondiarpet",l:"North",k:6.5,m:"None",f:"Seafood",s:"Port",x:"Metro Blue"},
+            {n:"V.O.C. Nagar",l:"North",k:8.0,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Tiruvottiyur",l:"North",k:9.5,m:"None",f:"Amma Canteen",s:"Temple",x:"Metro Blue"},
+            {n:"Wimco Nagar",l:"North",k:11,m:"None",f:"Local",s:"Ind Hub",x:"Metro Blue"},
+            {n:"Kathivakkam",l:"North",k:13.5,m:"None",f:"Local",s:"Backwaters",x:"None"},
+            {n:"Ennore",l:"North",k:15,m:"None",f:"Seafood",s:"Backwaters",x:"None"},
+            {n:"Athipattu Pudunagar",l:"North",k:18,m:"None",f:"Local",s:"Power Plant",x:"None"},
+            {n:"Athipattu",l:"North",k:19.5,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Nandiambakkam",l:"North",k:22,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Minjur",l:"North",k:26,m:"None",f:"Dhaba",s:"ORR",x:"None"},
+            {n:"Anuppambattu",l:"North",k:30,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Ponneri",l:"North",k:34,m:"None",f:"Local",s:"Temple",x:"None"},
+            {n:"Kavaraippettai",l:"North",k:41,m:"None",f:"Local",s:"Agri",x:"None"},
+            {n:"Gummidipoondi",l:"North",k:47,m:"None",f:"Industrial",s:"SIPCOT",x:"Terminus"},
+
+            // --- WEST LINE (Relative to Central=0) ---
+            {n:"Basin Bridge",l:"West",k:2,m:"None",f:"Local",s:"Junction View",x:"North Interchange"},
+            {n:"Vyasarpadi Jeeva",l:"West",k:4,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Perambur",l:"West",k:6,m:"Spectrum Mall",f:"A2B",s:"Rail Museum",x:"None"},
+            {n:"Perambur CW",l:"West",k:7,m:"None",f:"Local",s:"Workshop",x:"None"},
+            {n:"Perambur LW",l:"West",k:8,m:"None",f:"Local",s:"Loco Shed",x:"None"},
+            {n:"Villivakkam",l:"West",k:10,m:"VR Mall",f:"Vasanta Bhavan",s:"Sivan Temple",x:"None"},
+            {n:"Korattur",l:"West",k:12,m:"None",f:"Local",s:"Lake",x:"None"},
+            {n:"Pattaravakkam",l:"West",k:14,m:"None",f:"Local",s:"Ind Estate",x:"None"},
+            {n:"Ambattur",l:"West",k:15,m:"Rakki Cinema",f:"Sangeetha",s:"IT Hub",x:"None"},
+            {n:"Thirumullaivoyal",l:"West",k:17,m:"None",f:"Local",s:"Temple",x:"None"},
+            {n:"Annanur",l:"West",k:18,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Avadi",l:"West",k:21,m:"Market",f:"A2B",s:"HVF Factory",x:"None"},
+            {n:"Hindu College",l:"West",k:24,m:"None",f:"Local",s:"College",x:"None"},
+            {n:"Pattabiram",l:"West",k:25,m:"None",f:"Local",s:"Tidel Park West",x:"None"},
+            {n:"Nemilichery",l:"West",k:27,m:"None",f:"Local",s:"ORR",x:"None"},
+            {n:"Thiruninravur",l:"West",k:29,m:"None",f:"Local",s:"Temple",x:"None"},
+            {n:"Veppampattu",l:"West",k:32,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Sevvapet Road",l:"West",k:36,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Putlur",l:"West",k:39,m:"None",f:"Local",s:"Amman Temple",x:"None"},
+            {n:"Thiruvallur",l:"West",k:42,m:"Bazaar",f:"Guru Bhavan",s:"Temple",x:"None"},
+            {n:"Kadambattur",l:"West",k:47,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Manavur",l:"West",k:54,m:"None",f:"Local",s:"None",x:"None"},
+            {n:"Thiruvalangadu",l:"West",k:58,m:"None",f:"Local",s:"Sivan Temple",x:"None"},
+            {n:"Arakkonam",l:"West",k:69,m:"Market",f:"Food",s:"Naval Base",x:"Junction"},
+            {n:"Tiruttani",l:"West",k:83,m:"None",f:"Prasadam",s:"Murugan Temple",x:"Terminus"},
+
+            // --- MRTS LINE (Relative to Beach=0) ---
+            {n:"Park Town",l:"MRTS",k:2,m:"Moore Market",f:"Stalls",s:"Hub",x:"Central Hub"},
+            {n:"Chintadripet",l:"MRTS",k:3,m:"Richie St",f:"Vasanta",s:"Cooum",x:"None"},
+            {n:"Chepauk",l:"MRTS",k:5,m:"None",f:"Stadium",s:"Cricket",x:"None"},
+            {n:"Thiruvallikeni",l:"MRTS",k:6,m:"None",f:"Ratna Cafe",s:"Temple",x:"None"},
+            {n:"Light House",l:"MRTS",k:7,m:"None",f:"Seafood",s:"Lighthouse",x:"None"},
+            {n:"Thirumayilai",l:"MRTS",k:9,m:"Mylapore",f:"Rose Milk",s:"Kapaleeswarar",x:"None"},
+            {n:"Mandaveli",l:"MRTS",k:10,m:"None",f:"Local",s:"Mutt",x:"None"},
+            {n:"Thiruvanmiyur",l:"MRTS",k:15,m:"Tidel Park",f:"Sangeetha",s:"Beach",x:"None"},
+            {n:"Velachery",l:"MRTS",k:19,m:"Phoenix",f:"Grand Dining",s:"Marshland",x:"Terminus"},
+
+            // --- METRO BLUE (Independent Coordinate) ---
+            {n:"MGR Central",l:"Metro Blue",k:15,m:"Moore Market",f:"Central Food",s:"Station",x:"Hub"},
+            {n:"LIC",l:"Metro Blue",k:17,m:"Books",f:"Buhari",s:"LIC Bldg",x:"Direct"},
+            {n:"Thousand Lights",l:"Metro Blue",k:19,m:"Spencer Plaza",f:"Amethyst",s:"Mosque",x:"Direct"},
+            {n:"Alandur",l:"Metro Blue",k:28,m:"None",f:"Station Cafe",s:"Interchange",x:"Metro Green"},
+            {n:"Chennai International Airport",l:"Metro Blue",k:33,m:"Aerohub",f:"Food Court",s:"Terminal",x:"Terminus"},
+
+            // --- METRO GREEN ---
+            {n:"Vadapalani",l:"Metro Green",k:17,m:"Nexus Forum",f:"Salt",s:"Temple",x:"Direct"},
+            {n:"Anna Nagar Tower",l:"Metro Green",k:10,m:"High St",f:"Dining",s:"Tower",x:"Direct"},
+            {n:"St. Thomas Mount",l:"Metro Green",k:25,m:"None",f:"Local",s:"Church",x:"Suburban Interchange"}
+        ];
+
+        let srcS = null, destS = null, filter = 'all';
+
+        function handleSearch(type) {
+            const input = document.getElementById(`${type}-input`);
+            const dropdown = document.getElementById(`${type}-results`);
+            const val = input.value.trim().toLowerCase();
+            dropdown.innerHTML = '';
+            if (val.length === 0) { dropdown.classList.add('hidden'); return; }
+            
+            // Search logic - scans name and line
+            const matches = masterDB.filter(s => s.n.toLowerCase().includes(val) || s.l.toLowerCase().includes(val));
+            
+            if (matches.length > 0) {
+                dropdown.classList.remove('hidden');
+                matches.forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = "p-4 border-b border-slate-50 hover:bg-slate-50 cursor-pointer flex justify-between items-center";
+                    div.onclick = () => { input.value = s.n; dropdown.classList.add('hidden'); type === 'src' ? srcS = s : destS = s; if(srcS && destS) runEngine(); };
+                    const bCls = getBadgeColor(s.l);
+                    div.innerHTML = `<div><p class="font-bold text-slate-800 text-sm">${s.n}</p><span class="line-badge ${bCls}">${s.l}</span></div><i class="fa-solid fa-chevron-right text-slate-200"></i>`;
+                    dropdown.appendChild(div);
+                });
+            } else { dropdown.innerHTML = '<div class="p-4 text-center text-xs text-slate-400">Station not found</div>'; dropdown.classList.remove('hidden'); }
+        }
+
+        function getBadgeColor(line) {
+            if(line.includes('South')) return 'bg-south';
+            if(line.includes('West')) return 'bg-west';
+            if(line.includes('North')) return 'bg-north';
+            if(line.includes('MRTS')) return 'bg-mrts';
+            if(line.includes('Blue')) return 'bg-m-blue';
+            if(line.includes('Green')) return 'bg-m-green';
+            return 'bg-slate-100';
+        }
+
+        function swapStations() {
+            if(!srcS && !destS) return;
+            [srcS, destS] = [destS, srcS];
+            document.getElementById('src-input').value = srcS?.n || '';
+            document.getElementById('dest-input').value = destS?.n || '';
+            if(srcS && destS) runEngine();
+        }
+
+        function runEngine() {
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('result-view').classList.remove('hidden');
+
+            const sameLine = srcS.l === destS.l;
+            let dist = 0;
+            let hub = "Chennai Central / Beach Hub";
+
+            if (sameLine) {
+                dist = Math.abs(srcS.k - destS.k);
+            } else {
+                // UNIVERSAL HUB CALCULATION
+                // North/West coordinate 0 at Central
+                // South/MRTS coordinate 0 at Beach
+                // Distance between Central and Beach is approx 2km
+                
+                const group1 = ["South", "MRTS"].some(l => srcS.l.includes(l));
+                const group2 = ["South", "MRTS"].some(l => destS.l.includes(l));
+
+                if (group1 === group2) {
+                    // Both are in the Beach-origin category or Central-origin category but different lines
+                    dist = Math.abs(srcS.k) + Math.abs(destS.k);
+                } else if (srcS.l.includes("South") && destS.l.includes("Metro Green")) {
+                    hub = "Alandur / St. Thomas Mount";
+                    dist = Math.abs(srcS.k - 17) + 0.5; // STM is 17km from Beach
+                } else if (srcS.l.includes("South") && destS.l.includes("Metro Blue")) {
+                    hub = "Guindy / Alandur";
+                    dist = Math.abs(srcS.k - 14) + 0.5; // Guindy is 14km from Beach
+                } else {
+                    // Cross-hub travel (North/West to South/MRTS)
+                    dist = Math.abs(srcS.k) + Math.abs(destS.k) + 2; // +2km for Beach-Central gap
+                }
+            }
+
+            const isMetro = srcS.l.includes('Metro') || destS.l.includes('Metro');
+            let fare = isMetro ? Math.min(50, Math.max(10, Math.round(dist * 1.6))) : (dist <= 15 ? 5 : dist <= 45 ? 10 : 15);
+
+            document.getElementById('fare-val').textContent = `₹${fare}`;
+            document.getElementById('dist-val').textContent = `${dist.toFixed(1)} km`;
+            document.getElementById('route-badge').textContent = sameLine ? 'Direct Route' : 'Transfer Required';
+            
+            renderTimeline(!sameLine, hub);
+            renderTimings();
+            renderGuide();
+        }
+
+        function renderTimeline(needsInterchange, hubName) {
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '';
+            const steps = [{ n: srcS.n, l: srcS.l, t: 'Origin', i: 'fa-play', c: 'bg-emerald-500' }];
+            if (needsInterchange) steps.push({ n: hubName, l: 'Interchange', t: 'Transfer', i: 'fa-shuffle', c: 'bg-orange-500' });
+            steps.push({ n: destS.n, l: destS.l, t: 'Destination', i: 'fa-flag-checkered', c: 'bg-rose-500' });
+            steps.forEach((s, i) => {
+                const div = document.createElement('div');
+                div.className = "timeline-item relative pl-12 pb-10";
+                div.innerHTML = `<div class="timeline-line"></div><div class="absolute left-0 top-1 w-12 h-12 flex items-center justify-center"><div class="w-8 h-8 rounded-full ${s.c} flex items-center justify-center text-white shadow-lg z-10"><i class="fa-solid ${s.i} text-[10px]"></i></div></div><div><p class="font-extrabold text-slate-800 text-lg leading-none">${s.n}</p><p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">${s.t} • ${s.l}</p></div>`;
+                container.appendChild(div);
+            });
+        }
+
+        function setFilter(v, btn) {
+            filter = v;
+            document.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('bg-blue-600','text-white','shadow-md'); b.classList.add('bg-slate-100','text-slate-500'); });
+            btn.classList.replace('bg-slate-100', 'bg-blue-600'); btn.classList.replace('text-slate-500', 'text-white'); btn.classList.add('shadow-md');
+            if(srcS && destS) renderTimings();
+        }
+
+        function renderTimings() {
+            const list = document.getElementById('timings-list');
+            list.innerHTML = '';
+            let t = new Date(); t.setHours(4, 0, 0);
+            while(t.getHours() < 23) {
+                const h = t.getHours();
+                let show = filter === 'all';
+                if(!show) { const [s,e] = filter.split('-').map(Number); show = s===20 ? h>=20 : h>=s && h<e; }
+                if(show) {
+                    const time = t.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+                    const div = document.createElement('div');
+                    div.className = "flex justify-between items-center p-5 bg-white rounded-3xl border border-slate-50 shadow-sm animate-up";
+                    div.innerHTML = `<div class="flex items-center gap-6"><span class="font-black text-2xl text-slate-800">${time}</span><div class="h-8 w-px bg-slate-100"></div><span class="text-[10px] font-bold text-slate-400 uppercase">Platform ${1 + Math.floor(Math.random()*4)}</span></div><span class="text-[9px] font-black px-3 py-1 rounded-lg ${Math.random()>0.7?'bg-orange-100 text-orange-600':'bg-emerald-100 text-emerald-600'} uppercase">${Math.random()>0.7?'Fast':'Slow'}</span>`;
+                    list.appendChild(div);
+                }
+                t.setMinutes(t.getMinutes() + 15 + Math.floor(Math.random()*15));
+            }
+        }
+
+        function renderGuide() {
+            const list = document.getElementById('guide-list');
+            list.innerHTML = '';
+            [srcS, destS].forEach((s, idx) => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6";
+                card.innerHTML = `<div class="flex justify-between items-center"><span class="text-[10px] font-black text-blue-500 uppercase tracking-widest">${idx===0?'Departure':'Arrival'} Guide</span></div><h3 class="text-2xl font-extrabold text-slate-800">${s.n}</h3><div class="grid grid-cols-2 gap-3"><div class="bg-slate-50 p-4 rounded-3xl"><i class="fa-solid fa-bag-shopping text-rose-500 mb-2"></i><p class="text-[8px] font-bold text-slate-400 uppercase mb-1">Shopping</p><p class="text-xs font-bold text-slate-700">${s.m}</p></div><div class="bg-slate-50 p-4 rounded-3xl"><i class="fa-solid fa-utensils text-emerald-500 mb-2"></i><p class="text-[8px] font-bold text-slate-400 uppercase mb-1">Dining</p><p class="text-xs font-bold text-slate-700">${s.f}</p></div><div class="bg-slate-50 p-4 rounded-3xl"><i class="fa-solid fa-camera text-amber-500 mb-2"></i><p class="text-[8px] font-bold text-slate-400 uppercase mb-1">Visitor Info</p><p class="text-xs font-bold text-slate-700">${s.s}</p></div><div class="bg-slate-50 p-4 rounded-3xl"><i class="fa-solid fa-link text-blue-500 mb-2"></i><p class="text-[8px] font-bold text-slate-400 uppercase mb-1">Interchange</p><p class="text-xs font-bold text-slate-700">${s.x}</p></div></div>`;
+                list.appendChild(card);
+            });
+        }
+
+        function switchTab(t) {
+            document.getElementById('timings-list').classList.toggle('hidden', t!=='timings');
+            document.getElementById('guide-list').classList.toggle('hidden', t!=='guide');
+            document.getElementById('btn-timings').classList.toggle('active', t==='timings');
+            document.getElementById('btn-guide').classList.toggle('active', t==='guide');
+        }
+
+        setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString(); }, 1000);
+    </script>
+</body>
+</html>
+
+  
